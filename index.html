@@ -371,82 +371,28 @@ html,body{font-family:'Work Sans',sans-serif;background:var(--bg);color:var(--bl
           </div>
           <script type="text/javascript">
             function irParaChecklist() {
-              window.location.href = 'https://lexdesign.io/checklist/';
+              const landing   = document.getElementById('screen-landing');
+              const checklist = document.getElementById('screen-checklist');
+              landing.style.opacity = '0';
+              setTimeout(() => {
+                landing.classList.remove('active');
+                checklist.classList.add('active');
+                window.scrollTo({ top: 0, behavior: 'instant' });
+                requestAnimationFrame(() => { checklist.style.opacity = '1'; });
+              }, 350);
             }
 
-            // Intercepta o alert("Obrigado!") que o RD Station dispara
-            var _origAlert = window.alert;
-            window.alert = function(msg) {
-              if (msg && (
-                msg.toLowerCase().indexOf('obrigado') > -1 ||
-                msg.toLowerCase().indexOf('thank') > -1 ||
-                msg.toLowerCase().indexOf('enviado') > -1 ||
-                msg.toLowerCase().indexOf('sucesso') > -1
-              )) {
-                irParaChecklist();
-              } else {
-                _origAlert.apply(window, arguments);
-              }
-            };
+            // Se veio com ?checklist=1 na URL (redirect do RD Station), vai direto
+            if (window.location.search.indexOf('checklist=1') > -1) {
+              document.addEventListener('DOMContentLoaded', irParaChecklist);
+            }
 
             (function() {
               var rdLoaded = false;
 
-              // Estratégia 1 — evento nativo do RD Station
+              // Evento nativo RD Station (funciona em alguns contextos)
               document.addEventListener('rdstation.form.success', irParaChecklist);
 
-              // Estratégia 2 — observer no DOM: detecta a mensagem de sucesso que o RD injeta
-              var observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(m) {
-                  m.addedNodes.forEach(function(node) {
-                    if (node.nodeType === 1) {
-                      var text = node.innerText || node.textContent || '';
-                      var html = node.innerHTML || '';
-                      // RD Station injeta elementos com classe ou texto de confirmação
-                      if (
-                        node.classList && (
-                          node.classList.contains('thankyou-page') ||
-                          node.classList.contains('rd-thank-you') ||
-                          node.classList.contains('conversion-form-sent')
-                        ) ||
-                        html.indexOf('obrigado') > -1 ||
-                        html.indexOf('Obrigado') > -1 ||
-                        html.indexOf('thank') > -1 ||
-                        html.indexOf('enviado') > -1 ||
-                        html.indexOf('sucesso') > -1
-                      ) {
-                        setTimeout(irParaChecklist, 1200);
-                      }
-                    }
-                  });
-                });
-              });
-              observer.observe(document.body, { childList: true, subtree: true });
-
-              // Estratégia 3 — interceptar fetch/XHR do RD Station
-              var origFetch = window.fetch;
-              window.fetch = function() {
-                return origFetch.apply(this, arguments).then(function(res) {
-                  if (res.url && res.url.indexOf('rdstation') > -1 && res.status === 200) {
-                    setTimeout(irParaChecklist, 1200);
-                  }
-                  return res;
-                });
-              };
-
-              var origXHR = window.XMLHttpRequest.prototype.open;
-              window.XMLHttpRequest.prototype.open = function(method, url) {
-                if (url && url.indexOf('rdstation') > -1) {
-                  this.addEventListener('load', function() {
-                    if (this.status === 200) {
-                      setTimeout(irParaChecklist, 1200);
-                    }
-                  });
-                }
-                return origXHR.apply(this, arguments);
-              };
-
-              // Carregar script RD
               var script = document.createElement('script');
               script.src = 'https://d335luupugsy2.cloudfront.net/js/rdstation-forms/stable/rdstation-forms.min.js';
               script.onload = function() {
