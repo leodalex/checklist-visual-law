@@ -374,6 +374,21 @@ html,body{font-family:'Work Sans',sans-serif;background:var(--bg);color:var(--bl
               window.location.href = 'https://lexdesign.io/checklist/';
             }
 
+            // Intercepta o alert("Obrigado!") que o RD Station dispara
+            var _origAlert = window.alert;
+            window.alert = function(msg) {
+              if (msg && (
+                msg.toLowerCase().indexOf('obrigado') > -1 ||
+                msg.toLowerCase().indexOf('thank') > -1 ||
+                msg.toLowerCase().indexOf('enviado') > -1 ||
+                msg.toLowerCase().indexOf('sucesso') > -1
+              )) {
+                irParaChecklist();
+              } else {
+                _origAlert.apply(window, arguments);
+              }
+            };
+
             (function() {
               var rdLoaded = false;
 
