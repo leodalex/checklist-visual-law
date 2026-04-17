@@ -370,19 +370,79 @@ html,body{font-family:'Work Sans',sans-serif;background:var(--bg);color:var(--bl
             O formulário não carregou. Acesse diretamente em <a href="https://lexdesign.io" target="_blank" style="color:var(--purple)">lexdesign.io</a> ou recarregue a página.
           </div>
           <script type="text/javascript">
+            function irParaChecklist() {
+              window.location.href = 'https://lexdesign.io/checklist/';
+            }
+
             (function() {
               var rdLoaded = false;
+
+              // Estratégia 1 — evento nativo do RD Station
+              document.addEventListener('rdstation.form.success', irParaChecklist);
+
+              // Estratégia 2 — observer no DOM: detecta a mensagem de sucesso que o RD injeta
+              var observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(m) {
+                  m.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) {
+                      var text = node.innerText || node.textContent || '';
+                      var html = node.innerHTML || '';
+                      // RD Station injeta elementos com classe ou texto de confirmação
+                      if (
+                        node.classList && (
+                          node.classList.contains('thankyou-page') ||
+                          node.classList.contains('rd-thank-you') ||
+                          node.classList.contains('conversion-form-sent')
+                        ) ||
+                        html.indexOf('obrigado') > -1 ||
+                        html.indexOf('Obrigado') > -1 ||
+                        html.indexOf('thank') > -1 ||
+                        html.indexOf('enviado') > -1 ||
+                        html.indexOf('sucesso') > -1
+                      ) {
+                        setTimeout(irParaChecklist, 1200);
+                      }
+                    }
+                  });
+                });
+              });
+              observer.observe(document.body, { childList: true, subtree: true });
+
+              // Estratégia 3 — interceptar fetch/XHR do RD Station
+              var origFetch = window.fetch;
+              window.fetch = function() {
+                return origFetch.apply(this, arguments).then(function(res) {
+                  if (res.url && res.url.indexOf('rdstation') > -1 && res.status === 200) {
+                    setTimeout(irParaChecklist, 1200);
+                  }
+                  return res;
+                });
+              };
+
+              var origXHR = window.XMLHttpRequest.prototype.open;
+              window.XMLHttpRequest.prototype.open = function(method, url) {
+                if (url && url.indexOf('rdstation') > -1) {
+                  this.addEventListener('load', function() {
+                    if (this.status === 200) {
+                      setTimeout(irParaChecklist, 1200);
+                    }
+                  });
+                }
+                return origXHR.apply(this, arguments);
+              };
+
+              // Carregar script RD
               var script = document.createElement('script');
               script.src = 'https://d335luupugsy2.cloudfront.net/js/rdstation-forms/stable/rdstation-forms.min.js';
               script.onload = function() {
                 rdLoaded = true;
                 new RDStationForms('formulario-diagnostico-duplicado-c0aa5d77fb10edf4434c', 'UA-215285394-1').createForm();
-                document.addEventListener('rdstation.form.success', goToChecklist);
               };
               script.onerror = function() {
                 document.getElementById('rd-fallback').style.display = 'block';
               };
               document.head.appendChild(script);
+
               setTimeout(function() {
                 if (!rdLoaded) document.getElementById('rd-fallback').style.display = 'block';
               }, 5000);
